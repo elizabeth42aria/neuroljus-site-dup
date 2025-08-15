@@ -246,10 +246,10 @@ export default function NeuroljusLanding() {
           <div className="mt-6 rounded-2xl border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
             <div className="grow">
               <div className="text-sm text-gray-600">Email</div>
-              <a href="mailto:hello@neuroljus.ai" className="font-medium">hello@neuroljus.ai</a>
+              <a href="mailto:care@neuroljus.com" className="font-medium">care@neuroljus.com</a>
               <div className="mt-3 text-xs text-gray-500">{t("Stockholm, Sweden","Stockholm, Sverige")}</div>
             </div>
-            <a href="mailto:hello@neuroljus.ai" className="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black text-sm">{t("Send email","Skicka mejl")}</a>
+            <a href="mailto:care@neuroljus.com" className="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black text-sm">{t("Send email","Skicka mejl")}</a>
           </div>
           <p className="mt-6 text-xs text-gray-500">
             {t(
