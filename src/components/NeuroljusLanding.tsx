@@ -236,33 +236,43 @@ export default function NeuroljusLanding() {
       </section>
 
       {/* Contact */}
-      <section id="contact" className="border-t">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl md:text-3xl font-semibold">{t("Contact","Kontakt")}</h2>
-          <p className="mt-3 text-gray-700 max-w-3xl">
-            {t(
-              "Interested in partnering, piloting, or funding Neuroljus? Email us and we’ll respond within 48 hours.",
-              "Intresserad av partnerskap, pilot eller finansiering av Neuroljus? Mejla oss så svarar vi inom 48 timmar."
-            )}
-          </p>
-          <div className="mt-6 rounded-2xl border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="grow">
-              <div className="text-sm text-gray-600">Email</div>
-              <a href="mailto:care@neuroljus.com" className="font-medium">care@neuroljus.com</a>
-              <div className="mt-3 text-xs text-gray-500">{t("Stockholm, Sweden","Stockholm, Sverige")}</div>
-            </div>
-            <          </div>
-          <p className="mt-6 text-xs text-gray-500">
-            {t(          </div>
-          <p className="mt-6 text-xs text-gray-500">
-            {t(
-              "Neuroljus is applying to Swedish innovation and social impact programs (e.g., Vinnova, RISE, municipal pilots).",
-              "Neuroljus ansöker till svenska innovations‑ och samhällsnyttoprogram (t.ex. Vinnova, RISE, kommunala piloter)."
-            )}
-          </p>
-        </div>
-      </section>
+<section id="contact" className="border-t">
+  <div className="max-w-6xl mx-auto px-4 py-16">
+    <h2 className="text-2xl md:text-3xl font-semibold">{t("Contact","Kontakt")}</h2>
 
+    <p className="mt-3 text-gray-700 max-w-3xl">
+      {t(
+        "Interested in partnering, piloting, or funding Neuroljus? Email us and we’ll respond within 48 hours.",
+        "Intresserad av partnerskap, pilot eller finansiering av Neuroljus? Mejla oss så svarar vi inom 48 timmar."
+      )}
+    </p>
+
+    <div className="mt-6 rounded-2xl border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
+      <div className="grow">
+        <div className="text-sm text-gray-600">Email</div>
+        <a href="mailto:care@neuroljus.com" className="font-medium">care@neuroljus.com</a>
+        <div className="mt-3 text-xs text-gray-500">{t("Stockholm, Sweden","Stockholm, Sverige")}</div>
+      </div>
+
+      <div className="flex gap-3">
+        <Link href="/contact" className="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black text-sm">
+          {t("Open contact form","Öppna kontaktformuläret")}
+        </Link>
+        <a href="mailto:care@neuroljus.com" className="px-4 py-2 rounded-xl border hover:bg-gray-50 text-sm">
+          {t("Send email","Skicka mejl")}
+        </a>
+      </div>
+    </div>
+
+    <p className="mt-6 text-xs text-gray-500">
+      {t(
+        "Neuroljus is applying to Swedish innovation and social impact programs (e.g., Vinnova, RISE, municipal pilots).",
+        "Neuroljus ansöker till svenska innovations- och samhällsnyttoprogram (t.ex. Vinnova, RISE, kommunala piloter)."
+      )}
+    </p>
+  </div>
+</section>
+      
       {/* Footer */}
       <footer className="border-t bg-white">
         <div className="max-w-6xl mx-auto px-4 py-10 text-xs text-gray-500 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
