@@ -14,7 +14,7 @@ export default function ContactForm() {
     const formData = new FormData(form);
 
     // Web3Forms: añade tu access_key
-    formData.append("access_key", "TU_ACCESS_KEY_AQUI");
+    formData.append("access_key", "5b50cf71-36b1-4445-8d7a-f9a7a98cc4f6");
     // Metadatos útiles
     formData.append("subject", "Neuroljus — New contact");
     formData.append("from_name", "Neuroljus Website");
