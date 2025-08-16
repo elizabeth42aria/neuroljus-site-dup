@@ -257,8 +257,6 @@ export default function NeuroljusLanding() {
         </a>
       </div>
     </div>
-
-    
   </div>
 </section>
       
