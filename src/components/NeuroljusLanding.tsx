@@ -258,12 +258,7 @@ export default function NeuroljusLanding() {
       </div>
     </div>
 
-    <p className="mt-6 text-xs text-gray-500">
-      {t(
-        "Neuroljus is applying to Swedish innovation and social impact programs (e.g., Vinnova, RISE, municipal pilots).",
-        "Neuroljus ansöker till svenska innovations- och samhällsnyttoprogram (t.ex. Vinnova, RISE, kommunala piloter)."
-      )}
-    </p>
+    
   </div>
 </section>
       
