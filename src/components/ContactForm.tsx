@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/router
-  
+import { useRouter } from "next/router";
+
 export default function ContactForm() {
   const [state, setState] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [msg, setMsg] = useState("");
