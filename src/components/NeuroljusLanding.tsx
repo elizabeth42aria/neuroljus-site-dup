@@ -27,9 +27,9 @@ export default function NeuroljusLanding() {
             <button onClick={() => setLang(lang === 'en' ? 'sv' : 'en')} className="text-xs px-3 py-1 rounded-full border hover:bg-gray-50">
               {lang === 'en' ? 'SV' : 'EN'}
             </button>
-            <a href="#contact" className="text-xs px-3 py-1 rounded-full bg-gray-900 text-white hover:bg-black">
-              {t("Get in touch","Kontakta oss")}
-            </a>
+            <Link href="/contact" className="text-xs px-3 py-1 rounded-full bg-gray-900 text-white hover:bg-black">
+  {t("Get in touch","Kontakta oss")}
+</Link>            
           </div>
         </div>
       </header>
