@@ -19,7 +19,9 @@ export default function NeuroljusLanding() {
             <a href="#reporting" className="hover:underline">{t("Reporting","Rapportering")}</a>
             <a href="#ethics" className="hover:underline">{t("Ethics","Etik")}</a>
             <a href="#pilot" className="hover:underline">{t("Pilot","Pilot")}</a>
-            <a href="#contact" className="hover:underline">{t("Contact","Kontakt")}</a>
+            Link href="/contact" className="hover:underline">
+  {t("Contact","Kontakt")}
+</Link>
           </nav>
           <div className="flex items-center gap-3">
             <button onClick={() => setLang(lang === 'en' ? 'sv' : 'en')} className="text-xs px-3 py-1 rounded-full border hover:bg-gray-50">
