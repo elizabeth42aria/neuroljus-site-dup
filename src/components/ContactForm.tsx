@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
-
+import { useRouter } from "next/router
+  
 export default function ContactForm() {
   const [state, setState] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [msg, setMsg] = useState("");
-
+  const router = useRouter();
+  
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setState("sending");
@@ -27,10 +29,13 @@ export default function ContactForm() {
       }).then((r) => r.json());
 
       if (res.success) {
-        setState("ok");
-        setMsg("Tack! / ¡Gracias! / Thanks! We’ll reply within 1–2 business days.");
-        form.reset();
-      } else {
+  await new Promise(r => setTimeout(r, 300)); // (opcional, mini pausa)
+  router.push("/thanks");
+  return;
+} else {
+  // ...
+}      
+      {
         setState("error");
         setMsg(res.message || "We couldn’t send your message. Please try again.");
       }
