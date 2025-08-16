@@ -240,12 +240,6 @@ export default function NeuroljusLanding() {
   <div className="max-w-6xl mx-auto px-4 py-16">
     <h2 className="text-2xl md:text-3xl font-semibold">{t("Contact","Kontakt")}</h2>
 
-    <p className="mt-3 text-gray-700 max-w-3xl">
-      {t(
-        "Interested in partnering, piloting, or funding Neuroljus? Email us and we’ll respond within 48 hours.",
-        "Intresserad av partnerskap, pilot eller finansiering av Neuroljus? Mejla oss så svarar vi inom 48 timmar."
-      )}
-    </p>
 
     <div className="mt-6 rounded-2xl border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
       <div className="grow">
