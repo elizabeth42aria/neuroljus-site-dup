@@ -1,5 +1,5 @@
-import { useState } from "react";
-
+import React, { useState } from "react";
+import Link from "next/link";
 export default function NeuroljusLanding() {
   const [lang, setLang] = useState<'en' | 'sv'>("en");
   const t = (en: string, sv: string) => (lang === "en" ? en : sv);
