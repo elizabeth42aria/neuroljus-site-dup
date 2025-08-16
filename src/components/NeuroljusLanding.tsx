@@ -249,8 +249,9 @@ export default function NeuroljusLanding() {
               <a href="mailto:care@neuroljus.com" className="font-medium">care@neuroljus.com</a>
               <div className="mt-3 text-xs text-gray-500">{t("Stockholm, Sweden","Stockholm, Sverige")}</div>
             </div>
-            <a href="mailto:care@neuroljus.com" className="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black text-sm">{t("Send email","Skicka mejl")}</a>
-          </div>
+            <          </div>
+          <p className="mt-6 text-xs text-gray-500">
+            {t(          </div>
           <p className="mt-6 text-xs text-gray-500">
             {t(
               "Neuroljus is applying to Swedish innovation and social impact programs (e.g., Vinnova, RISE, municipal pilots).",
