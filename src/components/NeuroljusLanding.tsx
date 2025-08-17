@@ -145,7 +145,7 @@ export default function NeuroljusLanding() {
               <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
                 <li>{t("Compile observations from the day (signals, context, interventions).","Samla dagens observationer (signaler, kontext, åtgärder).")}</li>
                 <li>{t("Draft a structured report automatically.","Skapa automatiskt ett strukturerat utkast.")}</li>
-                <li>{t("Caregiver reviews, edits and signs.","Vårdnadshavare granskar, redigerar och signerar.")}</li>
+                <li>{t("Caregiver reviews, edits.","Vårdnadshavare granskar, redigerar.")}</li>
                 <li>{t("Export to clinic/school systems if enabled.","Exportera till klinik/skolsystem om aktiverat.")}</li>
               </ul>
             </div>
