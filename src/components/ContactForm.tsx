@@ -6,7 +6,7 @@ export default function ContactForm() {
   const [state, setState] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [msg, setMsg] = useState("");
   const router = useRouter();
-  
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setState("sending");
@@ -15,9 +15,9 @@ export default function ContactForm() {
     const form = e.currentTarget;
     const formData = new FormData(form);
 
-    // Web3Forms: añade tu access_key
+    // Web3Forms — tu access key pública
     formData.append("access_key", "5b50cf71-36b1-4445-8d7a-f9a7a98cc4f6");
-    // Metadatos útiles
+    // Metadatos
     formData.append("subject", "Neuroljus — New contact");
     formData.append("from_name", "Neuroljus Website");
     formData.append("replyto", (formData.get("email") as string) || "");
@@ -29,13 +29,16 @@ export default function ContactForm() {
       }).then((r) => r.json());
 
       if (res.success) {
-  await new Promise(r => setTimeout(r, 300)); // (opcional, mini pausa)
-  router.push("/thanks");
-  return;
-} else {
-  // ...
-}      
-      {
+        try { form.reset(); } catch {}
+        await new Promise((r) => setTimeout(r, 150)); // opcional
+        // Redirección segura
+        if (typeof window !== "undefined") {
+          window.location.assign("/thanks");
+        } else {
+          router.push("/thanks");
+        }
+        return;
+      } else {
         setState("error");
         setMsg(res.message || "We couldn’t send your message. Please try again.");
       }
@@ -49,7 +52,7 @@ export default function ContactForm() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl md:text-4xl font-semibold mb-4">Contact</h1>
       <p className="text-sm text-gray-600 mb-6">
-        SV/EN · Please don’t send clinical data by email. See our{' '}
+        SV/EN · Please don’t send clinical data by email. See our{" "}
         <Link href="/privacy" className="underline">Privacy</Link>.
       </p>
 
@@ -97,7 +100,7 @@ export default function ContactForm() {
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" required className="mt-1" />
           <span>
-            I consent to being contacted by email. I’ve read the{' '}
+            I consent to being contacted by email. I’ve read the{" "}
             <Link href="/privacy" className="underline">Privacy Policy</Link>.
           </span>
         </label>
