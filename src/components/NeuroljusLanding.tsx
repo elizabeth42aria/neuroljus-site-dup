@@ -134,41 +134,55 @@ export default function NeuroljusLanding() {
           </ol>
         </div>
       </section>
+{/* Reporting */}
+<section id="reporting" className="border-t bg-gray-50">
+  <div className="max-w-6xl mx-auto px-4 py-16">
+    <h2 className="text-2xl md:text-3xl font-semibold">
+      {t("AI Care Log — Reporting","AI-vårdlogg — Rapportering")}
+    </h2>
 
-      {/* Reporting */}
-      <section id="reporting" className="border-t bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl md:text-3xl font-semibold">{t("AI Care Log — Reporting","AI‑vårdlogg — Rapportering")}</h2>
-          <div className="grid md:grid-cols-3 gap-6 mt-6">
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h4 className="font-medium">{t("Workflow","Arbetsflöde")}</h4>
-              <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-                <li>{t("Compile observations from the day (signals, context, interventions).","Samla dagens observationer (signaler, kontext, åtgärder).")}</li>
-                <li>{t("Draft a structured report automatically.","Skapa automatiskt ett strukturerat utkast.")}</li>
-                <li>{t("Caregiver reviews, edits.","Vårdnadshavare granskar, redigerar.")}</li>
-                <li>{t("Export to clinic/school systems if enabled.","Exportera till klinik/skolsystem om aktiverat.")}</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h4 className="font-medium">{t("Output structure","Utdatans struktur")}</h4>
-              <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-                <li>{t("State & mood summary","Sammanfattning av tillstånd & sinnestämning")}</li>
-                <li>{t("Behaviors observed & triggers","Observerade beteenden & triggers")}</li>
-                <li>{t("Actions taken & rationale","Vidtagna åtgärder & motiv")}</li>
-                <li>{t("Outcome & follow‑up recommendations","Utfall & uppföljningsrekommendationer")}</li>
-                <li>{t("Free‑text notes","Fritextanteckningar")}</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h4 className="font-medium">{t("Data handling","Datahantering")}</h4>
-              <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-                <li>{t("GDPR‑compliant; data minimization; pseudonymization.","GDPR‑efterlevnad; dataminimering; pseudonymisering.")}</li>
-                <li>{t("On‑device processing where possible; encrypted sync when needed.","Lokal bearbetning när möjligt; krypterad synk vid behov.")}</li>
-                <li>{t("Role‑based access, audit logs, human‑in‑the‑loop.","Rollbaserad åtkomst, granskningsloggar, human‑in‑the‑loop.")}</li>
-                <li>{t("Caregiver retains final authorship of reports.","Vårdnadshavaren behåller slutligt författarskap för rapporter.")}</li>
-              </ul>
-            </div>
-          </div>
+    <div className="grid md:grid-cols-3 gap-6 mt-6">
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h4 className="font-medium">{t("Workflow","Arbetsflöde")}</h4>
+        <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
+          <li>{t("Compile observations from the day (signals, context, interventions).","Samla dagens observationer (signaler, kontext, åtgärder).")}</li>
+          <li>{t("Automatically draft a structured report.","Skapa automatiskt ett strukturerat utkast.")}</li>
+          <li>{t("Caregiver reviews and edits according to local guidelines.","Vårdpersonal granskar och redigerar enligt lokala riktlinjer.")}</li>
+          <li>{t("Optional export of prepared summaries to local systems; no automatic submission from Neuroljus.","Valfri export av förberedda sammanfattningar till lokala system; ingen automatisk inlämning från Neuroljus.")}</li>
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h4 className="font-medium">{t("Output structure","Utdatans struktur")}</h4>
+        <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
+          <li>{t("State & mood summary","Sammanfattning av tillstånd & sinnestämning")}</li>
+          <li>{t("Behaviors observed & triggers","Observerade beteenden & triggers")}</li>
+          <li>{t("Actions taken & rationale","Vidtagna åtgärder & motiv")}</li>
+          <li>{t("Outcome & follow-up recommendations","Utfall & uppföljningsrekommendationer")}</li>
+          <li>{t("Free-text notes","Fritextanteckningar")}</li>
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h4 className="font-medium">{t("Data handling","Datahantering")}</h4>
+        <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
+          <li>{t("GDPR-compliant; data minimization; pseudonymization.","GDPR-efterlevnad; dataminimering; pseudonymisering.")}</li>
+          <li>{t("On-device processing where possible; encrypted sync when needed.","Lokal bearbetning när möjligt; krypterad synk vid behov.")}</li>
+          <li>{t("Role-based access, audit logs, human-in-the-loop.","Rollbaserad åtkomst, granskningsloggar, human-in-the-loop.")}</li>
+          <li>{t("Caregiver retains final authorship; final submission follows local procedures outside the app.","Vårdpersonal behåller slutligt författarskap; slutlig inlämning sker enligt lokala rutiner utanför appen.")}</li>
+        </ul>
+      </div>
+    </div>
+
+    <p className="mt-6 text-xs text-gray-500">
+      {t(
+        "Neuroljus is an assistive tool and not a medical device. It does not sign or submit documents.",
+        "Neuroljus är ett stödverktyg och inte en medicinteknisk produkt. Den signerar eller skickar inte in dokument."
+      )}
+    </p>
+  </div>
+</section>
+   
           <div className="mt-6 rounded-2xl border p-6 shadow-sm">
             <p className="text-sm text-gray-700">
               {t(
