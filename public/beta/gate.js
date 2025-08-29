@@ -45,6 +45,8 @@
     setSession(profile);
     updateStatus("Acceso concedido.", "ok");
     showProtected(profile);
+    await fetch('/api/nl-login', { method: 'POST' });
+    location.href = '/app/';
   }
 
   function openModal(){
