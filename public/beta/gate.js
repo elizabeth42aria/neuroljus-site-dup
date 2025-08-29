@@ -57,11 +57,11 @@
 
   function closeModal(){ modal.classList.add("hidden"); }
 
-  document.addEventListener("click", e=>{
+  document.addEventListener("click", async e=>{
     if(e.target.id==="openBtn") openModal();
     if(e.target.id==="closeModal") closeModal();
     if(e.target.id==="submitCode") handleSubmit();
-    if(e.target.id==="goApp"){ const p = load(profKey)||{}; location.href = "../app/index.html?pid=" + encodeURIComponent(p.id||"anon"); }
+    if(e.target.id==="goApp"){ const p = load(profKey)||{}; await fetch('/api/nl-login', { method: 'POST' }); location.href = '/app/'; }
     if(e.target.id==="logout"){ clear(sessKey); clear(profKey); location.reload(); }
   });
 
