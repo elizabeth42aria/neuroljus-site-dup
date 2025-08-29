@@ -180,19 +180,17 @@ export default function NeuroljusLanding() {
         "Neuroljus är ett stödverktyg och inte en medicinteknisk produkt. Den signerar eller skickar inte in dokument."
       )}
     </p>
+
+    <div className="mt-6 rounded-2xl border p-6 shadow-sm">
+      <p className="text-sm text-gray-700">
+        {t(
+          "Goal: reduce administrative burden, improve data quality for care and research, and accelerate adoption by starting with friendly documentation support.",
+          "Mål: minska administrativ börda, förbättra datakvalitet för vård och forskning och påskynda införande genom vänligt dokumentationsstöd."
+        )}
+      </p>
+    </div>
   </div>
 </section>
-   
-          <div className="mt-6 rounded-2xl border p-6 shadow-sm">
-            <p className="text-sm text-gray-700">
-              {t(
-                "Goal: reduce administrative burden, improve data quality for care and research, and accelerate adoption by starting with friendly documentation support.",
-                "Mål: minska administrativ börda, förbättra datakvalitet för vård och forskning och påskynda införande genom vänligt dokumentationsstöd."
-              )}
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Ethics & Safety */}
       <section id="ethics" className="border-t">
