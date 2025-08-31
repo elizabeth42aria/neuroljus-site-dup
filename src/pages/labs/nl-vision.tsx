@@ -5,7 +5,38 @@ import CareChat   from "../../components/CareChat";
 import Script     from "next/script";
 
 export default function NLVisionHolisticPage() {
-  return (
+    // ——— calcula 0–100 según tamaño relativo de la cara ———
+function nearFacePercent(
+  face: Array<{ x: number; y: number }>,
+  W: number,
+  H: number
+) {
+  if (!face?.length) return 0;
+
+  let minX = 1, minY = 1, maxX = 0, maxY = 0;
+  for (const p of face) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const boxW = (maxX - minX) * W;
+  const boxH = (maxY - minY) * H;
+  const area = Math.max(0, boxW * boxH);
+
+  // Umbrales (ajústalos si quieres)
+  const AREA_FAR  = W * H * 0.05;
+  const AREA_NEAR = W * H * 0.35;
+
+  // t en [0,1]: 0 = lejos, 1 = muy cerca
+  const t = Math.max(
+    0,
+    Math.min(1, (area - AREA_FAR) / Math.max(1, AREA_NEAR - AREA_FAR))
+  );
+
+  return Math.round(t * 100);
+}
     <>
       {/* MediaPipe Holistic from CDN */}
       <Script
@@ -152,6 +183,7 @@ function NLVisionHolistic() {
         selfieMode: true,
         modelComplexity: 1,
         smoothLandmarks: true,
+        refineFaceLandmarks: true,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5,
       });
