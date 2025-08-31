@@ -1,24 +1,372 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NL-VISION Demo (iframe)</title>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; }
-      .wrap { max-width: 900px; margin: 0 auto; }
-      .card { background:#0b0f14; color:#f5f7fb; border:1px solid #2a2f36; border-radius:12px; padding:16px; }
-      a { color:#7ad7ff; }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <h1>NL-VISION (iframe)</h1>
-      <div class="card">
-        <p>Esta es la página simple que se carga dentro del iframe.<br/>
-        Más adelante aquí podemos incrustar el HTML del demo (cámara, canvas, etc.).</p>
-      </div>
-      <p><a href="/labs/nl-vision-beta/">Volver al beta gate</a></p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NL-VISION · Holistic Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'ui-sans-serif', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #1E1F3B;
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    .container {
+      display: flex;
+      height: 100vh;
+      gap: 16px;
+      padding: 16px;
+    }
+    
+    .video-area {
+      flex: 1;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+    }
+    
+    .video-area video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .video-area canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .metrics-panel {
+      width: 280px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .metric {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    
+    .metric-label {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+    
+    .metric-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #5EE6A4;
+    }
+    
+    .status {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #e9f2ff;
+    }
+    
+    .error {
+      color: #ffb4b4;
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="video-area">
+      <video id="video" muted playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div class="status" id="status">Initializing...</div>
     </div>
-  </body>
+    
+    <div class="metrics-panel">
+      <div class="metric">
+        <div class="metric-label">Hands Activity</div>
+        <div class="metric-value" id="hands-activity">0</div>
+      </div>
+      
+      <div class="metric">
+        <div class="metric-label">Near Face</div>
+        <div class="metric-value" id="near-face">0%</div>
+      </div>
+      
+      <div class="metric">
+        <div class="metric-label">Mouth Open</div>
+        <div class="metric-value" id="mouth-open">0%</div>
+      </div>
+      
+      <div class="metric">
+        <div class="metric-label">Blinks/min</div>
+        <div class="metric-value" id="blinks-per-min">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MediaPipe CDN Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
+
+  <script>
+    // Global variables
+    let holistic;
+    let video;
+    let canvas;
+    let ctx;
+    let statusEl;
+    let running = false;
+    
+    // Metrics elements
+    let handsActivityEl;
+    let nearFaceEl;
+    let mouthOpenEl;
+    let blinksPerMinEl;
+    
+    // Metrics tracking
+    let metrics = {
+      handsActivity: 0,
+      nearFace: 0,
+      mouthOpen: 0,
+      blinksPerMin: 0
+    };
+    
+    // Initialize the application
+    async function init() {
+      try {
+        // Get DOM elements
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+        statusEl = document.getElementById('status');
+        handsActivityEl = document.getElementById('hands-activity');
+        nearFaceEl = document.getElementById('near-face');
+        mouthOpenEl = document.getElementById('mouth-open');
+        blinksPerMinEl = document.getElementById('blinks-per-min');
+        
+        // Wait for MediaPipe to load
+        await waitForMediaPipe();
+        
+        // Initialize camera
+        await initCamera();
+        
+        // Initialize Holistic
+        await initHolistic();
+        
+        // Start processing
+        startProcessing();
+        
+      } catch (error) {
+        console.error('Initialization error:', error);
+        statusEl.textContent = 'Error: ' + error.message;
+        statusEl.style.color = '#ffb4b4';
+      }
+    }
+    
+    // Wait for MediaPipe libraries to load
+    function waitForMediaPipe() {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('MediaPipe failed to load'));
+        }, 10000);
+        
+        function check() {
+          if (window.Holistic && window.drawConnectors && window.drawLandmarks) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            setTimeout(check, 100);
+          }
+        }
+        check();
+      });
+    }
+    
+    // Initialize camera
+    async function initCamera() {
+      statusEl.textContent = 'Requesting camera...';
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      
+      video.srcObject = stream;
+      
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          // Set canvas size to match video
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          resolve();
+        };
+      });
+    }
+    
+    // Initialize MediaPipe Holistic
+    async function initHolistic() {
+      statusEl.textContent = 'Initializing Holistic...';
+      
+      holistic = new window.Holistic({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
+      });
+      
+      holistic.setOptions({
+        selfieMode: true,
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      
+      holistic.onResults(onResults);
+    }
+    
+    // Process Holistic results
+    function onResults(results) {
+      if (!running) return;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw video background
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Get landmarks
+      const faceLandmarks = results.faceLandmarks || [];
+      const leftHandLandmarks = results.leftHandLandmarks || [];
+      const rightHandLandmarks = results.rightHandLandmarks || [];
+      
+      // Draw landmarks
+      if (faceLandmarks.length > 0) {
+        window.drawLandmarks(ctx, faceLandmarks, {
+          color: '#A685F7',
+          radius: 2
+        });
+      }
+      
+      if (leftHandLandmarks.length > 0) {
+        window.drawConnectors(ctx, leftHandLandmarks, window.HAND_CONNECTIONS, {
+          color: '#7CE3F7',
+          lineWidth: 2
+        });
+        window.drawLandmarks(ctx, leftHandLandmarks, {
+          color: '#5EE6A4',
+          radius: 2
+        });
+      }
+      
+      if (rightHandLandmarks.length > 0) {
+        window.drawConnectors(ctx, rightHandLandmarks, window.HAND_CONNECTIONS, {
+          color: '#7CE3F7',
+          lineWidth: 2
+        });
+        window.drawLandmarks(ctx, rightHandLandmarks, {
+          color: '#5EE6A4',
+          radius: 2
+        });
+      }
+      
+      // Calculate metrics
+      calculateMetrics(faceLandmarks, leftHandLandmarks, rightHandLandmarks);
+      
+      // Update display
+      updateMetricsDisplay();
+    }
+    
+    // Calculate metrics from landmarks
+    function calculateMetrics(faceLandmarks, leftHandLandmarks, rightHandLandmarks) {
+      // Hands activity (0 or 1)
+      metrics.handsActivity = (leftHandLandmarks.length > 0 || rightHandLandmarks.length > 0) ? 1 : 0;
+      
+      // Near face calculation using bounding box heuristic
+      if (faceLandmarks.length > 0 && (leftHandLandmarks.length > 0 || rightHandLandmarks.length > 0)) {
+        const faceCenter = getLandmarkCenter(faceLandmarks);
+        const handCenter = leftHandLandmarks.length > 0 
+          ? getLandmarkCenter(leftHandLandmarks)
+          : getLandmarkCenter(rightHandLandmarks);
+        
+        const distance = Math.hypot(faceCenter.x - handCenter.x, faceCenter.y - handCenter.y);
+        const threshold = 0.15; // Adjust this threshold as needed
+        metrics.nearFace = distance < threshold ? 100 : 0;
+      } else {
+        metrics.nearFace = 0;
+      }
+      
+      // Mouth open calculation (vertical distance between landmarks 13 and 14)
+      if (faceLandmarks.length > 0) {
+        const landmark13 = faceLandmarks[13];
+        const landmark14 = faceLandmarks[14];
+        if (landmark13 && landmark14) {
+          const verticalDistance = Math.abs(landmark13.y - landmark14.y);
+          metrics.mouthOpen = Math.min(100, Math.round(verticalDistance * 100));
+        }
+      }
+      
+      // Blinks per minute (placeholder - set to 0 for now)
+      metrics.blinksPerMin = 0;
+    }
+    
+    // Get center point of landmarks
+    function getLandmarkCenter(landmarks) {
+      const x = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
+      const y = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
+      return { x, y };
+    }
+    
+    // Update metrics display
+    function updateMetricsDisplay() {
+      handsActivityEl.textContent = metrics.handsActivity;
+      nearFaceEl.textContent = metrics.nearFace + '%';
+      mouthOpenEl.textContent = metrics.mouthOpen + '%';
+      blinksPerMinEl.textContent = metrics.blinksPerMin;
+    }
+    
+    // Start processing loop
+    function startProcessing() {
+      running = true;
+      statusEl.textContent = 'Running';
+      statusEl.style.color = '#5EE6A4';
+      
+      async function processFrame() {
+        if (!running) return;
+        
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          await holistic.send({ image: video });
+        }
+        
+        requestAnimationFrame(processFrame);
+      }
+      
+      processFrame();
+    }
+    
+    // Start the application
+    init();
+  </script>
+</body>
 </html>
