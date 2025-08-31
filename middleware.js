@@ -1,11 +1,9 @@
+// middleware.js — desactivado temporalmente para permitir acceso libre
 import { NextResponse } from 'next/server';
 
-export const config = { matcher: ['/app/:path*'] };
+// Desactivar todas las rutas del middleware
+export const config = { matcher: [] };
 
-export function middleware(req) {
-  const url = req.nextUrl;
-  const token = req.cookies.get('nl_token');
-  if (token?.value === 'ok') return NextResponse.next();
-  url.pathname = '/labs/nl-vision-beta/';
-  return NextResponse.redirect(url);
+export function middleware() {
+  return NextResponse.next();
 }
