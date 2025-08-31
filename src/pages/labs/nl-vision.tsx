@@ -1,10 +1,10 @@
-/* ---------- DEMO: Holistic + live analytics ---------- */
+
+* ---------- PAGE (scripts loading + Holistic component) 
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import LiveVitals from "../../components/LiveVitals";
 import CareChat   from "../../components/CareChat";
 import Script     from "next/script";
-
-
-/* ---------- PAGE (scripts loading + Holistic component) ---------- */
+---------- */
 export default function NLVisionHolisticPage() {
   return (
     <>
