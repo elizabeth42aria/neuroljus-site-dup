@@ -1,288 +1,147 @@
-import React, { useState } from "react";
-import Link from "next/link";
+// src/components/neuroljusLanding.tsx
+/* eslint-disable @next/next/no-img-element */
+import Image from "next/image";
+import { useEffect, useState } from "react";
+
 export default function NeuroljusLanding() {
-  const [lang, setLang] = useState<'en' | 'sv'>("en");
-  const t = (en: string, sv: string) => (lang === "en" ? en : sv);
+  const [lang, setLang] = useState<"sv" | "en">("sv");
+  useEffect(() => {
+    try {
+      const l = navigator.language?.toLowerCase().startsWith("sv") ? "sv" : "en";
+      setLang(l as "sv" | "en");
+    } catch {}
+  }, []);
+
+  const T = {
+    tagSV: "Empatisk AI för sensorisk förståelse",
+    tagEN: "Empathic AI for Sensory Understanding",
+    titleSV: "Ljus som gör det osynliga begripligt",
+    titleEN: "Light that makes the invisible understandable",
+    subSV:
+      "En empatisk, lokal AI-följeslagare som hjälper familjer och vårdgivare att förstå sensoriska mönster och hälsosignaler – i din takt.",
+    subEN:
+      "An empathic, on-device AI companion that helps families and caregivers understand sensory patterns and health signals — at your pace.",
+    ctaSV: "Öppna NL-VISION (demo)",
+    ctaEN: "Open NL-VISION (demo)",
+    p1SV: "Granskningsbart, transparent och inkluderande.",
+    p1EN: "Auditable, transparent, and inclusive.",
+    p2SV: "GPT-stöd valfritt, integritet först.",
+    p2EN: "GPT support optional, privacy first.",
+    p3SV: "Skyddad kärna: data stannar lokalt.",
+    p3EN: "Protected core: data stays local.",
+    footSV:
+      "NeuroLjus är experimentellt. Ingen data lämnar din enhet utan uttryckligt samtycke.",
+    footEN:
+      "NeuroLjus is experimental. No data leaves your device without explicit consent.",
+  };
+
+  const isSV = lang === "sv";
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      {/* Nav */}
-      <header className="sticky top-0 z-20 backdrop-blur bg-white/80 border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-200 via-teal-200 to-emerald-300 shadow-inner" />
-            <span className="font-semibold tracking-tight">Neuroljus</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <a href="#solution" className="hover:underline">{t("Solution","Lösning")}</a>
-            <a href="#how" className="hover:underline">{t("How it works","Så fungerar det")}</a>
-            <a href="#reporting" className="hover:underline">{t("Reporting","Rapportering")}</a>
-            <a href="#ethics" className="hover:underline">{t("Ethics","Etik")}</a>
-            <a href="#pilot" className="hover:underline">{t("Pilot","Pilot")}</a>
-            <Link href="/contact" className="hover:underline">
-  {t("Contact","Kontakt")}
-</Link>      
-          </nav>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setLang(lang === 'en' ? 'sv' : 'en')} className="text-xs px-3 py-1 rounded-full border hover:bg-gray-50">
-              {lang === 'en' ? 'SV' : 'EN'}
-            </button>
-            <Link href="/contact" className="text-xs px-3 py-1 rounded-full bg-gray-900 text-white hover:bg-black">
-  {t("Get in touch","Kontakta oss")}
-</Link>            
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="relative">
-        <div className="max-w-6xl mx-auto px-4 py-20 md:py-28">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
+    <div style={bg}>
+      <div style={wrap}>
+        <header style={head}>
+          <a href="/" style={brand}>
+            <Image
+              src="/brand/neuroljus-logo.svg"
+              alt="NeuroLjus logo"
+              width={36}
+              height={36}
+              priority
+              style={{ filter: "drop-shadow(0 0 10px rgba(124,227,247,.25))" }}
+            />
             <div>
-              <h1 className="text-3xl md:text-5xl font-semibold leading-tight tracking-tight">
-                {t(
-                  "Human‑aligned AI for autistic communication and caregiver support",
-                  "Människoanpassad AI för autistisk kommunikation och stöd till vårdnadshavare"
-                )}
-              </h1>
-              <p className="mt-4 text-gray-600 md:text-lg">
-                {t(
-                  "Neuroljus builds an ethical interface between AI and autistic individuals, helping caregivers anticipate emotional crises, assist with reporting, and provide real‑time, context‑aware guidance during care routines.",
-                  "Neuroljus bygger ett etiskt gränssnitt mellan AI och autistiska personer för att hjälpa vårdnadshavare att förutse känslomässiga kriser, bistå med rapportering och ge realtids‑, kontextmedveten vägledning under vårdrutiner."
-                )}
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <a href="#solution" className="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black text-sm">
-                  {t("See the solution","Se lösningen")}
-                </a>
-                <a href="#pilot" className="px-4 py-2 rounded-xl border hover:bg-gray-50 text-sm">
-                  {t("Join the pilot","Gå med i piloten")}
-                </a>
-              </div>
-              <p className="mt-3 text-xs text-gray-500">
-                {t(
-                  "Pre‑seed • Research & early pilots in Sweden",
-                  "Pre‑seed • Forskning & tidiga piloter i Sverige"
-                )}
-              </p>
-            </div>
-            <div className="md:pl-8">
-              <div className="rounded-2xl border p-6 shadow-sm">
-                <h3 className="font-medium mb-2">{t("One‑minute overview","Översikt på en minut")}</h3>
-                <ul className="text-sm text-gray-700 space-y-2 list-disc pl-5">
-                  <li>{t("Non‑invasive sensing and AI observation to read context and emotion.","Icke‑invasiva sensorer och AI‑observation för att läsa kontext och känslor.")}</li>
-                  <li>{t("Predictive signals to anticipate escalation and recommend calming actions.","Prediktiva signaler för att förutse eskalering och föreslå lugnande åtgärder.")}</li>
-                  <li>{t("AI‑assisted reporting to draft caregiver logs for review and signature.","AI‑assisterad rapportering för att utarbeta vårdnadsloggar för granskning och signatur.")}</li>
-                  <li>{t("Real‑time AI assistance offering suggestions, reminders, and calming strategies.","AI‑stöd i realtid som erbjuder förslag, påminnelser och lugnande strategier.")}</li>
-                  <li>{t("Consent‑first design; data minimization; caregiver‑controlled.","Samtycke först; dataminimering; vårdnadshavarkontrollerat.")}</li>
-                </ul>
+              <div style={{ fontWeight: 700, letterSpacing: 0.3 }}>NeuroLjus</div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>
+                {isSV ? T.tagSV : T.tagEN}
               </div>
             </div>
+          </a>
+
+          <nav style={{ marginLeft: "auto", display: "flex", gap: 14 }}>
+            <a href="/labs/nl-vision" style={navLink}>
+              NL-VISION
+            </a>
+            <a href="#about" style={navLink}>{isSV ? "Om" : "About"}</a>
+          </nav>
+
+          <div style={{ display: "flex", gap: 8, marginLeft: 8 }}>
+            <button onClick={() => setLang("sv")} style={btn}>SV</button>
+            <button onClick={() => setLang("en")} style={btn}>EN</button>
           </div>
-        </div>
-      </section>
+        </header>
 
-      {/* Solution */}
-      <section id="solution" className="border-t bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl md:text-3xl font-semibold">{t("Our solution","Vår lösning")}</h2>
+        <main style={mainGrid}>
+          <section style={card}>
+            <h1 style={{ fontSize: 40, margin: "6px 0" }}>
+              {isSV ? T.titleSV : T.titleEN}
+            </h1>
+            <p style={{ color: "#cbd5e1", margin: "0 0 14px" }}>
+              {isSV ? T.subSV : T.subEN}
+            </p>
+            <a href="/labs/nl-vision" style={cta}>
+              {isSV ? T.ctaSV : T.ctaEN}
+            </a>
+            <p style={note}>
+              {isSV
+                ? "Data stannar på enheten. Inget skickas utan ditt samtycke."
+                : "Data stays on device. Nothing is sent without your consent."}
+            </p>
+          </section>
 
-          <div className="grid md:grid-cols-4 gap-6 mt-6">
-            {[{
-              title: t("Empathic Observation","Empatisk observation"),
-              body: t("Context‑aware AI observes micro‑expressions and rhythms without identification or labeling.","Kontextmedveten AI observerar mikro‑uttryck och rytmer utan identifiering eller etikettering."),
-            },{
-              title: t("Predictive Calm","Prediktivt lugn"),
-              body: t("Signals forecast potential escalation and offer a short list of caregiver actions.","Signaler förutser möjlig eskalering och föreslår en kort lista av åtgärder för vårdnadshavare."),
-            },{
-              title: t("AI‑Assisted Reporting","AI‑assisterad rapportering"),
-              body: t("Automatically generates structured daily reports based on observations, ready for caregiver review, modification, and signature.","Genererar automatiskt strukturerade dagliga rapporter baserade på observationer, redo för vårdnadshavares granskning, ändring och signatur."),
-            },{
-              title: t("Real‑time Caregiver Assistance","Realtidsstöd för vårdnadshavare"),
-              body: t("Provides context‑aware suggestions, reminders, and calming strategies during care routines, acting as a collaborative partner.","Ger kontextmedvetna förslag, påminnelser och lugnande strategier under vårdrutiner och fungerar som en samarbetspartner."),
-            }].map((card, i) => (
-              <div key={i} className="rounded-2xl border bg-white p-6 shadow-sm">
-                <h3 className="font-medium">{card.title}</h3>
-                <p className="mt-2 text-sm text-gray-700">{card.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <section style={card}>
+            <Image
+              src="/brand/neuroljus-logo.svg"
+              alt="NeuroLjus mark"
+              width={820}
+              height={820}
+              style={{ width: "100%", height: "auto" }}
+              priority
+            />
+          </section>
+        </main>
 
-      {/* How it works */}
-      <section id="how" className="border-t">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl md:text-3xl font-semibold">{t("How it works","Så fungerar det")}</h2>
-          <ol className="mt-6 grid md:grid-cols-4 gap-6 list-decimal pl-5">
-            <li className="rounded-2xl border p-6 shadow-sm">
-              <h4 className="font-medium">{t("Observe","Observera")}</h4>
-              <p className="mt-2 text-sm text-gray-700">{t("Edge device watches non‑invasively and summarizes state as privacy‑preserving signals.","En lokalenhet observerar icke‑invasivt och sammanfattar läget som integritetsskyddade signaler.")}</p>
-            </li>
-            <li className="rounded-2xl border p-6 shadow-sm">
-              <h4 className="font-medium">{t("Anticipate","Förutse")}</h4>
-              <p className="mt-2 text-sm text-gray-700">{t("Temporal models learn personal rhythms to anticipate crises minutes ahead.","Tidsmodeller lär sig personliga rytmer för att förutse kriser minuter i förväg.")}</p>
-            </li>
-            <li className="rounded-2xl border p-6 shadow-sm">
-              <h4 className="font-medium">{t("Support","Stöd")}</h4>
-              <p className="mt-2 text-sm text-gray-700">{t("Caregiver receives simple, context‑aware guidance; optional room modulation can be triggered.","Vårdnadshavaren får enkel, kontextmedveten vägledning; valfri rumsmodulering kan aktiveras.")}</p>
-            </li>
-            <li className="rounded-2xl border p-6 shadow-sm">
-              <h4 className="font-medium">{t("Document","Dokumentera")}</h4>
-              <p className="mt-2 text-sm text-gray-700">{t("AI drafts the daily care log; caregiver reviews, edits, and signs.","AI utarbetar den dagliga vårdloggen; vårdnadshavaren granskar, redigerar och signerar.")}</p>
-            </li>
-          </ol>
-        </div>
-      </section>
-{/* Reporting */}
-<section id="reporting" className="border-t bg-gray-50">
-  <div className="max-w-6xl mx-auto px-4 py-16">
-    <h2 className="text-2xl md:text-3xl font-semibold">
-      {t("AI Care Log — Reporting","AI-vårdlogg — Rapportering")}
-    </h2>
+        <section id="about" style={pillGrid}>
+          <div style={pill}><h3>Open for Trust</h3><p style={pillText}>{isSV ? T.p1SV : T.p1EN}</p></div>
+          <div style={pill}><h3>Powered by GPT (optional)</h3><p style={pillText}>{isSV ? T.p2SV : T.p2EN}</p></div>
+          <div style={pill}><h3>Protected Core</h3><p style={pillText}>{isSV ? T.p3SV : T.p3EN}</p></div>
+        </section>
 
-    <div className="grid md:grid-cols-3 gap-6 mt-6">
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h4 className="font-medium">{t("Workflow","Arbetsflöde")}</h4>
-        <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-          <li>{t("Compile observations from the day (signals, context, interventions).","Samla dagens observationer (signaler, kontext, åtgärder).")}</li>
-          <li>{t("Automatically draft a structured report.","Skapa automatiskt ett strukturerat utkast.")}</li>
-          <li>{t("Caregiver reviews and edits according to local guidelines.","Vårdpersonal granskar och redigerar enligt lokala riktlinjer.")}</li>
-          <li>{t("Optional export of prepared summaries to local systems; no automatic submission from Neuroljus.","Valfri export av förberedda sammanfattningar till lokala system; ingen automatisk inlämning från Neuroljus.")}</li>
-        </ul>
+        <footer style={{ textAlign: "center", color: "#b8c1d6", fontSize: 12, padding: "18px 22px" }}>
+          {isSV ? T.footSV : T.footEN}
+        </footer>
       </div>
-
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h4 className="font-medium">{t("Output structure","Utdatans struktur")}</h4>
-        <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-          <li>{t("State & mood summary","Sammanfattning av tillstånd & sinnestämning")}</li>
-          <li>{t("Behaviors observed & triggers","Observerade beteenden & triggers")}</li>
-          <li>{t("Actions taken & rationale","Vidtagna åtgärder & motiv")}</li>
-          <li>{t("Outcome & follow-up recommendations","Utfall & uppföljningsrekommendationer")}</li>
-          <li>{t("Free-text notes","Fritextanteckningar")}</li>
-        </ul>
-      </div>
-
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h4 className="font-medium">{t("Data handling","Datahantering")}</h4>
-        <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-          <li>{t("GDPR-compliant; data minimization; pseudonymization.","GDPR-efterlevnad; dataminimering; pseudonymisering.")}</li>
-          <li>{t("On-device processing where possible; encrypted sync when needed.","Lokal bearbetning när möjligt; krypterad synk vid behov.")}</li>
-          <li>{t("Role-based access, audit logs, human-in-the-loop.","Rollbaserad åtkomst, granskningsloggar, human-in-the-loop.")}</li>
-          <li>{t("Caregiver retains final authorship; final submission follows local procedures outside the app.","Vårdpersonal behåller slutligt författarskap; slutlig inlämning sker enligt lokala rutiner utanför appen.")}</li>
-        </ul>
-      </div>
-    </div>
-
-    <p className="mt-6 text-xs text-gray-500">
-      {t(
-        "Neuroljus is an assistive tool and not a medical device. It does not sign or submit documents.",
-        "Neuroljus är ett stödverktyg och inte en medicinteknisk produkt. Den signerar eller skickar inte in dokument."
-      )}
-    </p>
-
-    <div className="mt-6 rounded-2xl border p-6 shadow-sm">
-      <p className="text-sm text-gray-700">
-        {t(
-          "Goal: reduce administrative burden, improve data quality for care and research, and accelerate adoption by starting with friendly documentation support.",
-          "Mål: minska administrativ börda, förbättra datakvalitet för vård och forskning och påskynda införande genom vänligt dokumentationsstöd."
-        )}
-      </p>
-    </div>
-  </div>
-</section>
-
-      {/* Ethics & Safety */}
-      <section id="ethics" className="border-t">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl md:text-3xl font-semibold">{t("Ethics & safety","Etik & säkerhet")}</h2>
-          <div className="grid md:grid-cols-2 gap-6 mt-6">
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h4 className="font-medium">{t("Principles","Principer")}</h4>
-              <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-                <li>{t("Consent‑first, caregiver‑controlled.","Samtycke först, kontrollerat av vårdnadshavare.")}</li>
-                <li>{t("Data minimization; on‑device processing when possible.","Dataminimering; lokal bearbetning när det är möjligt.")}</li>
-                <li>{t("No biometric ID; respectful language and design.","Ingen biometrisk ID; respektfullt språk och design.")}</li>
-                <li>{t("Compliance: GDPR, CE‑marking path for device components.","Efterlevnad: GDPR, CE‑märkningsväg för enhetskomponenter.")}</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h4 className="font-medium">{t("Safeguards","Skyddsmekanismer")}</h4>
-              <ul className="mt-2 text-sm text-gray-700 space-y-2 list-disc pl-5">
-                <li>{t("Transparent logs for caregivers.","Transparanta loggar för vårdnadshavare.")}</li>
-                <li>{t("Hard‑off switch; offline mode.","Fysisk av‑knapp; offline‑läge.")}</li>
-                <li>{t("Accessible, screen‑light experiences.","Tillgängliga, skärmlätta upplevelser.")}</li>
-                <li>{t("Independent ethics board (in formation); human‑in‑the‑loop for reports.","Oberoende etikråd (under uppbyggnad); human‑in‑the‑loop för rapporter.")}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pilot */}
-      <section id="pilot" className="border-t bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl md:text-3xl font-semibold">{t("Pilot in Sweden (2025)","Pilot i Sverige (2025)")}</h2>
-          <p className="mt-3 text-gray-700 max-w-3xl">
-            {t(
-              "We are enrolling a small cohort of families, schools and clinics to co‑design and validate Neuroljus. Partners receive access to the early dashboard, research results, and training.",
-              "Vi rekryterar en liten grupp familjer, skolor och kliniker för samskapande och validering av Neuroljus. Partner får tillgång till vårt tidiga gränssnitt, forskningsresultat och utbildning."
-            )}
-          </p>
-          <div className="mt-6 grid md:grid-cols-3 gap-6">
-            {[
-              t("Families & caregivers","Familjer & vårdnadshavare"),
-              t("Schools & municipalities","Skolor & kommuner"),
-              t("Clinics & researchers","Kliniker & forskare"),
-            ].map((p, i) => (
-              <div key={i} className="rounded-2xl border p-6 shadow-sm">
-                <h4 className="font-medium">{p}</h4>
-                <p className="mt-2 text-sm text-gray-700">{t(
-                  "Co‑create with us and shape the tool around real needs.",
-                  "Samskapa med oss och forma verktyget efter verkliga behov."
-                )}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact */}
-<section id="contact" className="border-t">
-  <div className="max-w-6xl mx-auto px-4 py-16">
-    <h2 className="text-2xl md:text-3xl font-semibold">{t("Contact","Kontakt")}</h2>
-
-
-    <div className="mt-6 rounded-2xl border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
-      <div className="grow">
-        <div className="text-sm text-gray-600">Email</div>
-        <a href="mailto:care@neuroljus.com" className="font-medium">care@neuroljus.com</a>
-        <div className="mt-3 text-xs text-gray-500">{t("Stockholm, Sweden","Stockholm, Sverige")}</div>
-      </div>
-
-      <div className="flex gap-3">
-        <Link href="/contact" className="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black text-sm">
-          {t("Open contact form","Öppna kontaktformuläret")}
-        </Link>
-        <a href="mailto:care@neuroljus.com" className="px-4 py-2 rounded-xl border hover:bg-gray-50 text-sm">
-          {t("Send email","Skicka mejl")}
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
-      
-      {/* Footer */}
-      <footer className="border-t bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-10 text-xs text-gray-500 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-          <div>© {new Date().getFullYear()} Neuroljus — {t("All rights reserved.","Alla rättigheter förbehållna.")}</div>
-          <div className="flex gap-4">
-            <a href="#" className="hover:underline">{t("Privacy","Integritet")}</a>
-            <a href="#" className="hover:underline">{t("Accessibility","Tillgänglighet")}</a>
-            <a href="#ethics" className="hover:underline">{t("Ethics","Etik")}</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
+
+const bg: React.CSSProperties = {
+  minHeight: "100dvh",
+  color: "#fff",
+  background:
+    "radial-gradient(1200px 700px at 20% 10%, rgba(94,230,164,0.18), transparent 60%)," +
+    "radial-gradient(900px 600px at 80% 20%, rgba(124,227,247,0.18), transparent 60%)," +
+    "radial-gradient(1200px 900px at 50% 120%, rgba(166,133,247,0.18), transparent 60%)," +
+    "#1E1F3B",
+};
+const wrap: React.CSSProperties = { maxWidth: 1100, margin: "0 auto", padding: 22 };
+const head: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
+const brand: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#fff" };
+const navLink: React.CSSProperties = { color: "#cfe7ff", textDecoration: "none" };
+const btn: React.CSSProperties = { background: "transparent", color: "#cfe7ff", border: "1px solid #4a507e", borderRadius: 10, padding: "6px 10px", cursor: "pointer" };
+const mainGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 26, alignItems: "center" };
+const card: React.CSSProperties = { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: 22 };
+const cta: React.CSSProperties = {
+  display: "inline-block", padding: "12px 18px", borderRadius: 12, fontWeight: 600,
+  textDecoration: "none", color: "#0b1220",
+  backgroundImage: "linear-gradient(135deg, #5EE6A4 0%, #7CE3F7 100%)",
+  border: "1px solid rgba(255,255,255,0.25)", boxShadow: "0 6px 20px rgba(94,230,164,0.25)",
+};
+const note: React.CSSProperties = {
+  opacity: 0.8, marginTop: 10,
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+  fontSize: 12,
+};
+const pillGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18, marginTop: 22 };
+const pill: React.CSSProperties = { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 18 };
+const pillText: React.CSSProperties = { color: "#d7deea", margin: 0, fontSize: 14, lineHeight: 1.45 };

@@ -6,8 +6,7 @@ export async function POST() {
     secure: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 // 1 hour
+    maxAge: 60 * 60
   });
   return new Response('OK', { status: 200 });
 }
-
