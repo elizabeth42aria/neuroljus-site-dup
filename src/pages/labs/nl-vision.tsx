@@ -1,10 +1,9 @@
-
-* ---------- PAGE (scripts loading + Holistic component) 
+/* ---------- PAGE (scripts loading + Holistic component) ---------- */
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import LiveVitals from "../../components/LiveVitals";
 import CareChat   from "../../components/CareChat";
 import Script     from "next/script";
----------- */
+
 export default function NLVisionHolisticPage() {
   return (
     <>
