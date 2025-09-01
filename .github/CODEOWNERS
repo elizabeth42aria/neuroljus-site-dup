@@ -1,0 +1,4 @@
+# Protect NL-VISION core files – require review
+/src/pages/labs/nl-vision.tsx   @elizabeth42aria
+/src/components/CareChat.tsx    @elizabeth42aria
+/src/components/LiveVitals.tsx  @elizabeth42aria

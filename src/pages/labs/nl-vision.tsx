@@ -1,3 +1,11 @@
+/**
+ * NL-VISION PROTECTED FILE
+ * This file is part of the stable, polished NL-VISION demo (CareChat + LiveVitals + Holistic).
+ * Do not modify unless you *intentionally* update the demo.
+ * If you need to change it, include the commit message token: [ALLOW-NLVISION-EDIT]
+ * Frozen baseline tag: v1.0-nlvision-stable
+ */
+
 /* ---------- DEMO: Holistic + live analytics ---------- */
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import LiveVitals from "../../components/LiveVitals";
