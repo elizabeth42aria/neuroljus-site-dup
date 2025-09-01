@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 export default function Home() {
@@ -76,7 +77,7 @@ export default function Home() {
         <div className="container">
           {/* Header */}
           <header className="header" role="banner">
-            <a className="brand" href="/" aria-label="NeuroLjus home">
+            <Link className="brand" href="/" aria-label="NeuroLjus home">
               <Image
                 src="/brand/neuroljus-logo.svg"
                 alt="NeuroLjus logo – protected core with aurora"
@@ -89,12 +90,12 @@ export default function Home() {
                 <div className="brandName">NeuroLjus</div>
                 <div className="tagline">{isSV ? T.tagSV : T.tagEN}</div>
               </div>
-            </a>
+            </Link>
 
             <nav className="nav" aria-label={isSV ? "Primär" : "Primary"}>
-              <a href="/labs/nl-vision">Demo</a>
-              <a href="#vision">Vision&nbsp;AI</a>
-              <a href="#about">{isSV ? "Om" : "About"}</a>
+              <Link href="/labs/nl-vision">Demo</Link>
+              <Link href="/labs/nl-vision">Vision&nbsp;AI</Link>
+              <Link href="/about">{isSV ? "Om" : "About"}</Link>
             </nav>
 
             <div className="langToggle" role="group" aria-label="Language switch">
@@ -121,9 +122,9 @@ export default function Home() {
               <h1 className="title">{isSV ? T.titleSV : T.titleEN}</h1>
               <p className="subtitle">{isSV ? T.subSV : T.subEN}</p>
 
-              <a className="cta" href="/labs/nl-vision">
+              <Link className="cta" href="/labs/nl-vision">
                 {isSV ? T.ctaSV : T.ctaEN}
-              </a>
+              </Link>
 
               <p className="note">
                 {isSV
