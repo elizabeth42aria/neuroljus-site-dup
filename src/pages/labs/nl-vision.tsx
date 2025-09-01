@@ -1,15 +1,392 @@
-/* ---------- DEMO: Holistic + live analytics ---------- */
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import LiveVitals from "../../components/LiveVitals";
-import CareChat   from "../../components/CareChat";
-import Script     from "next/script";
+/**
+ * NL-VISION PROTECTED FILE
+ * This file is part of the stable, polished NL-VISION demo (CareChat + LiveVitals + Holistic).
+ * Do not modify unless you *intentionally* update the demo.
+ * If you need to change it, include the commit message token: [ALLOW-NLVISION-EDIT]
+ * Frozen baseline tag: v1.0-nlvision-stable
+ */
 
+import Head from "next/head";
+import Script from "next/script";
+import { useRef, useEffect, useState, useCallback } from "react";
+import CareChat from "../../components/CareChat";
 
-/* ---------- PAGE (scripts loading + Holistic component) ---------- */
-export default function NLVisionHolisticPage() {
+// MediaPipe global types
+declare global {
+  interface Window {
+    Holistic: any;
+    drawConnectors: any;
+    drawLandmarks: any;
+    HAND_CONNECTIONS: any;
+  }
+}
+
+// Types
+type MetricSample = {
+  t: number;
+  hands: number;
+  near: number;
+  mouth: number;
+  blinks: number;
+};
+
+type HolisticResults = {
+  faceLandmarks?: any[];
+  leftHandLandmarks?: any[];
+  rightHandLandmarks?: any[];
+};
+
+export default function NLVisionPage() {
+  // Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const holisticRef = useRef<any>(null);
+
+  // State
+  const [isRunning, setIsRunning] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Metrics state
+  const [handsActivity, setHandsActivity] = useState(0);
+  const [nearFacePercent, setNearFacePercent] = useState(0);
+  const [mouthOpenPercent, setMouthOpenPercent] = useState(0);
+  const [blinksPerMin, setBlinksPerMin] = useState(0);
+
+  // UI controls
+  const [showPreview, setShowPreview] = useState(false);
+  const [lowStimulus, setLowStimulus] = useState(false);
+  const [monochrome, setMonochrome] = useState(false);
+  const [lowLight, setLowLight] = useState(false);
+
+  // History
+  const [samples, setSamples] = useState<MetricSample[]>([]);
+  const blinkTimesRef = useRef<number[]>([]);
+  const lastEarRef = useRef<number>(1);
+
+  // Helpers
+  const nearFacePercentHelper = useCallback((faceLandmarks: any[], W: number, H: number): number => {
+    if (!faceLandmarks?.length) return 0;
+
+    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+    for (const p of faceLandmarks) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    const boxW = (maxX - minX) * W;
+    const boxH = (maxY - minY) * H;
+    const area = Math.max(0, boxW * boxH);
+
+    const AREA_FAR = W * H * 0.05;
+    const AREA_NEAR = W * H * 0.35;
+
+    const t = Math.max(0, Math.min(1, (area - AREA_FAR) / Math.max(1, AREA_NEAR - AREA_FAR)));
+    return Math.round(t * 100);
+  }, []);
+
+  const mouthOpenPercentHelper = useCallback((faceLandmarks: any[]): number => {
+    if (!faceLandmarks?.length) return 0;
+
+    // Landmarks for mouth: 13 (upper lip), 14 (lower lip), 61 (left corner), 291 (right corner)
+    const upperLip = faceLandmarks[13];
+    const lowerLip = faceLandmarks[14];
+    const leftCorner = faceLandmarks[61];
+    const rightCorner = faceLandmarks[291];
+
+    if (!upperLip || !lowerLip || !leftCorner || !rightCorner) return 0;
+
+    const verticalDistance = Math.abs(upperLip.y - lowerLip.y);
+    const mouthWidth = Math.abs(leftCorner.x - rightCorner.x);
+    
+    if (mouthWidth === 0) return 0;
+    
+    const ratio = verticalDistance / mouthWidth;
+    return Math.min(100, Math.round(ratio * 100));
+  }, []);
+
+  const detectBlink = useCallback((faceLandmarks: any[]): boolean => {
+    if (!faceLandmarks?.length) return false;
+
+    // Calculate Eye Aspect Ratio (EAR)
+    const leftEye = [
+      faceLandmarks[159], faceLandmarks[145], // upper, lower
+      faceLandmarks[33], faceLandmarks[133]   // left, right
+    ];
+    const rightEye = [
+      faceLandmarks[386], faceLandmarks[374], // upper, lower
+      faceLandmarks[362], faceLandmarks[263]  // left, right
+    ];
+
+    const calculateEAR = (eye: any[]) => {
+      if (!eye.every(p => p)) return 1;
+      
+      const A = Math.hypot(eye[0].x - eye[1].x, eye[0].y - eye[1].y);
+      const B = Math.hypot(eye[2].x - eye[3].x, eye[2].y - eye[3].y);
+      return A / (B || 1e-6);
+    };
+
+    const leftEAR = calculateEAR(leftEye);
+    const rightEAR = calculateEAR(rightEye);
+    const ear = (leftEAR + rightEAR) / 2;
+
+    const threshold = 0.24;
+    const now = Date.now();
+    
+    // Detect blink: EAR drops below threshold
+    if (lastEarRef.current >= threshold && ear < threshold && now - (blinkTimesRef.current[blinkTimesRef.current.length - 1] || 0) > 250) {
+      blinkTimesRef.current.push(now);
+      // Keep only blinks from last minute
+      blinkTimesRef.current = blinkTimesRef.current.filter(time => now - time < 60000);
+    }
+    
+    lastEarRef.current = ear;
+    return false;
+  }, []);
+
+  // Initialize MediaPipe
+  const initializeHolistic = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Wait for MediaPipe to load
+      const waitForMediaPipe = () => new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('MediaPipe failed to load')), 10000);
+        
+        const check = () => {
+          if (window.Holistic && window.drawConnectors && window.drawLandmarks) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            setTimeout(check, 100);
+          }
+        };
+        check();
+      });
+
+      await waitForMediaPipe();
+
+      // Initialize Holistic
+      holisticRef.current = new window.Holistic({
+        locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`
+      });
+
+      holisticRef.current.setOptions({
+        selfieMode: true,
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        refineFaceLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      holisticRef.current.onResults(onResults);
+      setIsLoading(false);
+    } catch (err) {
+      setError('Failed to initialize MediaPipe');
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Process results
+  const onResults = useCallback((results: HolisticResults) => {
+    if (!canvasRef.current || !videoRef.current) return;
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    const { width, height } = canvasRef.current;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Apply filters based on toggles
+    ctx.save();
+    if (monochrome) ctx.filter = 'grayscale(100%)';
+    if (lowLight) ctx.filter = `${ctx.filter} brightness(70%)`;
+    if (lowStimulus) ctx.globalAlpha = 0.7;
+
+    // Draw video background if preview is enabled
+    if (showPreview) {
+      ctx.drawImage(videoRef.current!, 0, 0, width, height);
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,0.78)';
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    ctx.restore();
+
+    // Draw landmarks
+    const faceLandmarks = results.faceLandmarks || [];
+    const leftHandLandmarks = results.leftHandLandmarks || [];
+    const rightHandLandmarks = results.rightHandLandmarks || [];
+
+    const lineWidth = lowStimulus ? 2 : 3;
+    const dotRadius = lowStimulus ? 1.2 : 1.6;
+    const faceColor = monochrome ? '#d9d0f5' : (lowStimulus ? '#c7b7f6' : '#A685F7');
+    const handColor = monochrome ? '#cfd5dc' : (lowStimulus ? '#9bdff0' : '#7CE3F7');
+    const handPointColor = monochrome ? '#e3e7ee' : (lowStimulus ? '#88dcb0' : '#5EE6A4');
+
+    // Draw face landmarks
+    if (faceLandmarks.length && window.drawLandmarks) {
+      window.drawLandmarks(ctx, faceLandmarks, { color: faceColor, radius: dotRadius });
+    }
+
+    // Draw hand landmarks
+    if (leftHandLandmarks.length && window.drawConnectors && window.HAND_CONNECTIONS) {
+      window.drawConnectors(ctx, leftHandLandmarks, window.HAND_CONNECTIONS, { color: handColor, lineWidth });
+      window.drawLandmarks(ctx, leftHandLandmarks, { color: handPointColor, radius: dotRadius });
+    }
+
+    if (rightHandLandmarks.length && window.drawConnectors && window.HAND_CONNECTIONS) {
+      window.drawConnectors(ctx, rightHandLandmarks, window.HAND_CONNECTIONS, { color: handColor, lineWidth });
+      window.drawLandmarks(ctx, rightHandLandmarks, { color: handPointColor, radius: dotRadius });
+    }
+
+    // Update metrics
+    const hands = (leftHandLandmarks.length > 0 || rightHandLandmarks.length > 0) ? 1 : 0;
+    const near = nearFacePercentHelper(faceLandmarks, width, height);
+    const mouth = mouthOpenPercentHelper(faceLandmarks);
+    
+    detectBlink(faceLandmarks);
+    const blinks = blinkTimesRef.current.length;
+
+    setHandsActivity(hands);
+    setNearFacePercent(near);
+    setMouthOpenPercent(mouth);
+    setBlinksPerMin(blinks);
+
+    // Add to samples
+    const sample: MetricSample = {
+      t: Date.now(),
+      hands,
+      near,
+      mouth,
+      blinks
+    };
+
+    setSamples(prev => [...prev.slice(-100), sample]); // Keep last 100 samples
+  }, [showPreview, lowStimulus, monochrome, lowLight, nearFacePercentHelper, mouthOpenPercentHelper, detectBlink]);
+
+  // Start camera and processing
+  const startCamera = useCallback(async () => {
+    try {
+      setError(null);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        
+        // Set canvas size
+        if (canvasRef.current) {
+          canvasRef.current.width = videoRef.current.videoWidth || 1280;
+          canvasRef.current.height = videoRef.current.videoHeight || 720;
+        }
+      }
+
+      setHasPermission(true);
+      setIsRunning(true);
+
+      // Start processing loop
+      const processFrame = async () => {
+        if (!isRunning || !holisticRef.current || !videoRef.current) return;
+        
+        if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+          await holisticRef.current.send({ image: videoRef.current });
+        }
+        
+        requestAnimationFrame(processFrame);
+      };
+      
+      processFrame();
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        setError('Permission dismissed');
+        setHasPermission(false);
+      } else {
+        setError(err.message || 'Failed to start camera');
+      }
+    }
+  }, [isRunning]);
+
+  // Stop camera
+  const stopCamera = useCallback(() => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsRunning(false);
+  }, []);
+
+  // Export CSV
+  const exportCSV = useCallback(() => {
+    if (samples.length === 0) return;
+
+    const headers = ['timestamp', 'hands_activity', 'near_face_percent', 'mouth_open_percent', 'blinks_per_min'];
+    const csvContent = [
+      headers.join(','),
+      ...samples.map(s => [
+        new Date(s.t).toISOString(),
+        s.hands,
+        s.near,
+        s.mouth,
+        s.blinks
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `nl-vision-metrics-${new Date().toISOString().slice(0, 19)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [samples]);
+
+  // Calculate state for CareChat
+  const getStateLabel = useCallback(() => {
+    if (handsActivity < 0.2 && mouthOpenPercent < 10 && blinksPerMin >= 8 && blinksPerMin <= 25) {
+      return 'Calm';
+    } else if (handsActivity > 0.5 || mouthOpenPercent > 30 || blinksPerMin > 30) {
+      return 'Active';
+    } else {
+      return 'Neutral';
+    }
+  }, [handsActivity, mouthOpenPercent, blinksPerMin]);
+
+  // Initialize on mount
+  useEffect(() => {
+    initializeHolistic();
+  }, [initializeHolistic]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
   return (
     <>
-      {/* MediaPipe Holistic from CDN */}
+      <Head>
+        <title>NL-VISION · Holistic</title>
+        <meta name="description" content="Interactive MediaPipe Holistic demo with real-time metrics and CareChat integration" />
+      </Head>
+
+      {/* MediaPipe Scripts */}
       <Script
         src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
         strategy="afterInteractive"
@@ -19,407 +396,388 @@ export default function NLVisionHolisticPage() {
         strategy="afterInteractive"
       />
 
-      {/* Optional Firebase (safe to keep even if unused) */}
-      <Script
-        src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"
-        strategy="afterInteractive"
-      />
-      <Script
-        src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"
-        strategy="afterInteractive"
-      />
-      <Script
-        src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"
-        strategy="afterInteractive"
-      />
+      <div className="page">
+        <div className="container">
+          {/* Header */}
+          <header className="header">
+            <h1 className="title">NL-VISION · Holistic</h1>
+            <p className="subtitle">Interactive AI · Face + Hands · Real-time metrics</p>
+          </header>
 
-      {/* Vision UI */}
-      <NLVisionHolistic />
+          {/* Main Demo Area */}
+          <div className="demo-container">
+            {/* Video/Canvas Area */}
+            <div className="video-section">
+              <div className="video-container">
+                <video
+                  ref={videoRef}
+                  muted
+                  playsInline
+                  style={{ display: 'none' }}
+                />
+                <canvas
+                  ref={canvasRef}
+                  className="canvas"
+                />
+                
+                {/* Error Badge */}
+                {error && (
+                  <div className="error-badge">
+                    Error: {error}
+                  </div>
+                )}
 
-      {/* Dashboard below camera */}
-      <div style={{ marginTop: 16 }}>
-        <LiveVitals />
-      </div>
+                {/* Loading Overlay */}
+                {isLoading && (
+                  <div className="loading-overlay">
+                    <div className="loading-spinner"></div>
+                    <p>Loading MediaPipe...</p>
+                  </div>
+                )}
+              </div>
 
-      {/* Caregiver Chat below dashboard */}
-      <div style={{ marginTop: 24 }}>
-        <CareChat />
-      </div>
-    </>
-  );
-}
-type MetricSample = {
-  t: number;
-  hasFace: boolean;
-  leftHand: boolean;
-  rightHand: boolean;
-  handsCount: number;
-  faceMove: number;
-  handsMove: number;
-  handNearFace: boolean;
-  ear?: number;        // eye aspect ratio
-  mouthOpen?: number;  // mouth open ratio
-};
+              {/* Controls */}
+              <div className="controls">
+                <div className="control-group">
+                  <button
+                    onClick={isRunning ? stopCamera : startCamera}
+                    disabled={!hasPermission && hasPermission !== null}
+                    className="control-btn primary"
+                  >
+                    {isRunning ? 'Stop' : 'Start'} Camera
+                  </button>
+                  <button
+                    onClick={exportCSV}
+                    disabled={samples.length === 0}
+                    className="control-btn secondary"
+                  >
+                    Export CSV
+                  </button>
+                </div>
 
-function NLVisionHolistic() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const stopRef = useRef<() => void>(() => {});
+                <div className="control-group">
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      checked={showPreview}
+                      onChange={(e) => setShowPreview(e.target.checked)}
+                    />
+                    <span>Show preview</span>
+                  </label>
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      checked={lowStimulus}
+                      onChange={(e) => setLowStimulus(e.target.checked)}
+                    />
+                    <span>Low-stimulus</span>
+                  </label>
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      checked={monochrome}
+                      onChange={(e) => setMonochrome(e.target.checked)}
+                    />
+                    <span>Monochrome</span>
+                  </label>
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      checked={lowLight}
+                      onChange={(e) => setLowLight(e.target.checked)}
+                    />
+                    <span>Low-light</span>
+                  </label>
+                </div>
+              </div>
+            </div>
 
-  const [running, setRunning] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+            {/* Metrics Panel */}
+            <div className="metrics-panel">
+              <h3 className="metrics-title">Live Metrics</h3>
+              
+              <div className="metric-card">
+                <div className="metric-label">Hands Activity</div>
+                <div className="metric-value">{handsActivity}</div>
+              </div>
 
-  // UI toggles
-  const [showPreview, setShowPreview] = useState(false);
-  const [lowStim, setLowStim] = useState(false);
-  const [mono, setMono] = useState(false);
-  const [lowLight, setLowLight] = useState(false);
+              <div className="metric-card">
+                <div className="metric-label">Near Face %</div>
+                <div className="metric-value">{nearFacePercent}%</div>
+              </div>
 
-  // Chat empathetic toggle
-  const [showChat, setShowChat] = useState(false);
+              <div className="metric-card">
+                <div className="metric-label">Mouth Open %</div>
+                <div className="metric-value">{mouthOpenPercent}%</div>
+              </div>
 
-  // small debug badge
-  const [dbg, setDbg] = useState({ fps: 0, hands: 0, face: 0 });
+              <div className="metric-card">
+                <div className="metric-label">Blinks/min</div>
+                <div className="metric-value">{blinksPerMin}</div>
+              </div>
 
-  // metrics buffers
-  const metricsRef = useRef<MetricSample[]>([]);
-  const lastPtsRef = useRef<{ face?: {x:number;y:number}; lh?: {x:number;y:number}; rh?: {x:number;y:number} }>({});
-  const blinkTimesRef = useRef<number[]>([]);
-  const lastBlinkTsRef = useRef<number>(0);
-  const lastEarRef = useRef<number>(1);
+              <div className="metric-info">
+                <p>State: <strong>{getStateLabel()}</strong></p>
+                <p>Samples: {samples.length}</p>
+              </div>
+            </div>
+          </div>
 
-  const fitCanvas = () => {
-    const v = videoRef.current, c = canvasRef.current;
-    if (!v || !c) return;
-    c.width = v.videoWidth || 1280;
-    c.height = v.videoHeight || 720;
-  };
-
-  const bgFilter = () => {
-    const f: string[] = [];
-    if (mono) f.push("grayscale(100%)");
-    if (lowLight) f.push("brightness(70%)");
-    return f.length ? f.join(" ") : "none";
-  };
-
-  // utils
-  const dist = (a?: {x:number;y:number}, b?: {x:number;y:number}) =>
-    (!a || !b) ? 0 : Math.hypot(a.x - b.x, a.y - b.y);
-  const pt = (lm: any[], i: number) => (lm && lm[i]) ? { x: lm[i].x, y: lm[i].y } : undefined;
-
-  const computeEAR = (faceLm: any[]): number | undefined => {
-    // left eye
-    const L_up = pt(faceLm, 159), L_down = pt(faceLm, 145);
-    const L_l  = pt(faceLm, 33),  L_r    = pt(faceLm, 133);
-    // right eye
-    const R_up = pt(faceLm, 386), R_down = pt(faceLm, 374);
-    const R_l  = pt(faceLm, 362), R_r    = pt(faceLm, 263);
-    const left = (dist(L_up, L_down) / (dist(L_l, L_r) || 1e-6));
-    const right= (dist(R_up, R_down) / (dist(R_l, R_r) || 1e-6));
-    if (!isFinite(left) || !isFinite(right)) return undefined;
-    return (left + right) / 2;
-  };
-
-  const computeMouthOpen = (faceLm: any[]): number | undefined => {
-    const up = pt(faceLm, 13), down = pt(faceLm, 14);
-    const l = pt(faceLm, 61),  r    = pt(faceLm, 291);
-    const ratio = dist(up, down) / (dist(l, r) || 1e-6);
-    return isFinite(ratio) ? ratio : undefined;
-  };
-
-  const start = async () => {
-    setErr(null);
-    try {
-      // 1) camera
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const v = videoRef.current!;
-      v.srcObject = stream;
-      await new Promise<void>((res) => (v.onloadedmetadata = () => res()));
-      await v.play();
-      fitCanvas();
-
-      // 2) holistic availability
-      const w = window as any;
-      if (!w.Holistic || !w.drawConnectors || !w.drawLandmarks) {
-        setErr("MediaPipe Holistic is still loading. Wait 1–2s and try again.");
-        return;
-      }
-
-      // 3) model
-      const holistic = new w.Holistic({
-        locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`,
-      });
-      holistic.setOptions({
-        selfieMode: true,
-        modelComplexity: 1,
-        smoothLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
-
-      const c = canvasRef.current!;
-      const ctx = c.getContext("2d");
-
-      holistic.onResults((res: any) => {
-        if (!ctx) return;
-        ctx.save();
-        ctx.clearRect(0, 0, c.width, c.height);
-
-        // background
-        if (showPreview) {
-          ctx.filter = bgFilter();
-          ctx.drawImage(videoRef.current!, 0, 0, c.width, c.height);
-          ctx.filter = "none";
-        } else {
-          ctx.fillStyle = "rgba(0,0,0,0.78)";
-          ctx.fillRect(0, 0, c.width, c.height);
-        }
-
-        // landmarks
-        const faceLm = res.faceLandmarks || [];
-        const lhLm   = res.leftHandLandmarks || [];
-        const rhLm   = res.rightHandLandmarks || [];
-
-        const lineW = lowStim ? 2 : 3;
-        const dotR  = lowStim ? 1.2 : 1.6;
-        const colFace   = mono ? "#d9d0f5" : (lowStim ? "#c7b7f6" : "#A685F7");
-        const colHand   = mono ? "#cfd5dc" : (lowStim ? "#9bdff0" : "#7CE3F7");
-        const colHandPt = mono ? "#e3e7ee" : (lowStim ? "#88dcb0" : "#5EE6A4");
-
-        if (faceLm.length) (window as any).drawLandmarks(ctx, faceLm, { color: colFace, radius: dotR });
-        if (lhLm.length) {
-          (window as any).drawConnectors(ctx, lhLm, (window as any).HAND_CONNECTIONS, { color: colHand, lineWidth: lineW });
-          (window as any).drawLandmarks(ctx, lhLm, { color: colHandPt, radius: dotR });
-        }
-        if (rhLm.length) {
-          (window as any).drawConnectors(ctx, rhLm, (window as any).HAND_CONNECTIONS, { color: colHand, lineWidth: lineW });
-          (window as any).drawLandmarks(ctx, rhLm, { color: colHandPt, radius: dotR });
-        }
-
-        // per-frame analytics
-        const t = Date.now();
-        const avg = (lm: any[]) => {
-          if (!lm.length) return undefined;
-          const x = lm.reduce((a: number, p: any) => a + p.x, 0) / lm.length;
-          const y = lm.reduce((a: number, p: any) => a + p.y, 0) / lm.length;
-          return { x, y };
-        };
-        const fC = avg(faceLm);
-        const lC = avg(lhLm);
-        const rC = avg(rhLm);
-        const last = lastPtsRef.current;
-
-        const faceMove  = dist(fC, last.face);
-        const lhMove    = dist(lC, last.lh);
-        const rhMove    = dist(rC, last.rh);
-        const handsMove = lhMove + rhMove;
-
-        const nearFace = (lC && fC && dist(lC, fC) < 0.12) || (rC && fC && dist(rC, fC) < 0.12) ? true : false;
-
-        lastPtsRef.current = { face: fC, lh: lC, rh: rC };
-
-        const ear = computeEAR(faceLm) ?? undefined;             // closed eyes ~ < 0.24
-        const mouthOpen = computeMouthOpen(faceLm) ?? undefined; // speaking/stress ~ > 0.35
-
-        // blink detection (simple)
-        if (ear !== undefined) {
-          const th = 0.24;
-          const now = t;
-          if (lastEarRef.current >= th && ear < th && now - lastBlinkTsRef.current > 250) {
-            blinkTimesRef.current.push(now);
-            lastBlinkTsRef.current = now;
-            const cutoff = now - 60_000;
-            blinkTimesRef.current = blinkTimesRef.current.filter(ts => ts >= cutoff);
-          }
-          lastEarRef.current = ear;
-        }
-
-        metricsRef.current.push({
-          t,
-          hasFace: !!faceLm.length,
-          leftHand: !!lhLm.length,
-          rightHand: !!rhLm.length,
-          handsCount: (lhLm.length ? 1 : 0) + (rhLm.length ? 1 : 0),
-          faceMove,
-          handsMove,
-          handNearFace: nearFace,
-          ear,
-          mouthOpen,
-        });
-
-        setDbg((d) => ({
-          ...d,
-          hands: (lhLm.length ? 1 : 0) + (rhLm.length ? 1 : 0),
-          face: faceLm.length ? 1 : 0,
-        }));
-
-        ctx.restore();
-      });
-
-      // render loop + fps
-      let alive = true;
-      let lastTs = performance.now();
-      const loop = async () => {
-        if (!alive) return;
-        fitCanvas();
-        await holistic.send({ image: videoRef.current! });
-        const now = performance.now();
-        const fps = 1000 / (now - lastTs);
-        lastTs = now;
-        setDbg((d) => ({ ...d, fps: Math.round(fps) }));
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-
-      // aggregate once per second
-      const tick = setInterval(() => {
-        const buf = metricsRef.current;
-        if (!buf.length) return;
-        const until = Date.now();
-        const slice = buf.splice(0, buf.length);
-
-        const hasFace = slice.some((s) => s.hasFace);
-        const handsAvg = slice.reduce((a, s) => a + s.handsCount, 0) / slice.length;
-        const faceMoveAvg = slice.reduce((a, s) => a + s.faceMove, 0) / slice.length;
-        const handsMoveAvg = slice.reduce((a, s) => a + s.handsMove, 0) / slice.length;
-        const handNearPct = slice.filter((s) => s.handNearFace).length / slice.length;
-
-        const earAvg = avgOrUndef(slice.map(s => s.ear).filter(isNum));
-        const mouthAvg = avgOrUndef(slice.map(s => s.mouthOpen).filter(isNum));
-
-        const now = until;
-        blinkTimesRef.current = blinkTimesRef.current.filter(ts => ts >= now - 60_000);
-        const blinksPerMin = blinkTimesRef.current.length;
-
-        const row = {
-          t0: slice[0].t,
-          t1: until,
-          hasFace,
-          handsAvg: +handsAvg.toFixed(3),
-          faceMoveAvg: +faceMoveAvg.toFixed(5),
-          handsMoveAvg: +handsMoveAvg.toFixed(5),
-          handNearPct: +handNearPct.toFixed(3),
-          earAvg: earAvg !== undefined ? +earAvg.toFixed(4) : null,
-          mouthOpenAvg: mouthAvg !== undefined ? +mouthAvg.toFixed(4) : null,
-          blinksPerMin,
-        };
-
-        const key = "nlvision_holistic_v1";
-        const prev = (typeof window !== "undefined" && window.localStorage.getItem(key)) || "[]";
-        let arr: any[] = [];
-        try { arr = JSON.parse(prev); } catch {}
-        arr.push(row);
-        try { window.localStorage.setItem(key, JSON.stringify(arr)); } catch {}
-      }, 1000);
-
-      const stop = () => {
-        try { clearInterval(tick); } catch {}
-        try { (videoRef.current?.srcObject as MediaStream | null)?.getTracks()?.forEach((t) => t.stop()); } catch {}
-        if (videoRef.current) videoRef.current.srcObject = null;
-        alive = false;
-      };
-      stopRef.current = stop;
-
-      setRunning(true);
-      setReady(true);
-    } catch (e: any) {
-      console.error(e);
-      setErr(e?.message || "Cannot access camera. Check browser & system permissions.");
-    }
-  };
-
-  const stop = () => { try { stopRef.current(); } catch {} setRunning(false); };
-  useEffect(() => () => stop(), []);
-
-  const exportCSV = () => {
-    const key = "nlvision_holistic_v1";
-    const raw = (typeof window !== "undefined" && window.localStorage.getItem(key)) || "[]";
-    let arr: any[] = [];
-    try { arr = JSON.parse(raw); } catch {}
-    const header = [
-      "t0","t1","hasFace","handsAvg","faceMoveAvg","handsMoveAvg",
-      "handNearPct","earAvg","mouthOpenAvg","blinksPerMin"
-    ];
-    const lines = [header.join(",")].concat(arr.map((r) => header.map((h) => r[h]).join(",")));
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `nlvision_metrics_${new Date().toISOString().slice(0,19)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // ---- UI ----
-  return (
-    <div style={S.page}>
-      <h1 style={S.h1}>NL-VISION · Holistic</h1>
-      <p style={S.sub}>Empathic AI · Face + Hands · On-device metrics</p>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        {!running ? <button onClick={start} style={S.btn}>Start Camera</button>
-                  : <button onClick={stop}  style={S.btn}>Stop</button>}
-        <button onClick={exportCSV} style={S.btn}>Export CSV</button>
-      </div>
-
-      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-        <label style={S.toggle}><input type="checkbox" checked={showPreview} onChange={e=>setShowPreview(e.target.checked)} /> Show preview</label>
-        <label style={S.toggle}><input type="checkbox" checked={lowStim} onChange={e=>setLowStim(e.target.checked)} /> Low-stimulus</label>
-        <label style={S.toggle}><input type="checkbox" checked={mono} onChange={e=>setMono(e.target.checked)} /> Monochrome</label>
-        <label style={S.toggle}><input type="checkbox" checked={lowLight} onChange={e=>setLowLight(e.target.checked)} /> Low-light</label>
-      </div>
-
-      <div style={S.stage}>
-        <video ref={videoRef} playsInline muted preload="auto"
-          style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", background:"#000" }} />
-        <canvas ref={canvasRef} style={S.canvas} />
-
-        <div style={{
-          position:"absolute", top:8, left:8, padding:"6px 8px",
-          background:"rgba(0,0,0,.45)", border:"1px solid rgba(255,255,255,.2)",
-          borderRadius:8, fontSize:12, color:"#e9f2ff"
-        }}>
-          <div>FPS: {dbg.fps}</div>
-          <div>Hands: {dbg.hands}</div>
-          <div>Face: {dbg.face}</div>
+          {/* CareChat Integration */}
+          <div className="carechat-section">
+            <CareChat />
+          </div>
         </div>
       </div>
 
-      {!ready && !err && <p style={{ ...S.sub, marginTop: 10 }}>Click “Start Camera” and allow access.</p>}
-      {err && <p style={{ color:"#ffb4b4", marginTop:10 }}>{err}</p>}
-    </div>
+      {/* Styles */}
+      <style jsx>{`
+        .page {
+          min-height: 100dvh;
+          color: #fff;
+          background:
+            radial-gradient(1200px 700px at 20% 10%, rgba(94,230,164,0.18), transparent 60%),
+            radial-gradient(900px 600px at 80% 20%, rgba(124,227,247,0.18), transparent 60%),
+            radial-gradient(1200px 900px at 50% 120%, rgba(166,133,247,0.18), transparent 60%),
+            #1E1F3B;
+          font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 24px;
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 32px;
+        }
+
+        .title {
+          font-size: 32px;
+          font-weight: 700;
+          margin: 0 0 8px;
+          background: linear-gradient(135deg, #5EE6A4, #7CE3F7);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .subtitle {
+          font-size: 16px;
+          color: #cbd5e1;
+          margin: 0;
+        }
+
+        .demo-container {
+          display: grid;
+          grid-template-columns: 1fr 300px;
+          gap: 24px;
+          margin-bottom: 32px;
+        }
+
+        .video-section {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .video-container {
+          position: relative;
+          width: 100%;
+          max-width: 900px;
+          aspect-ratio: 16/9;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #000;
+          border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .canvas {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+
+        .error-badge {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          background: rgba(239, 68, 68, 0.9);
+          color: white;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .loading-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.8);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+
+        .loading-spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid rgba(255,255,255,0.3);
+          border-top: 3px solid #5EE6A4;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .controls {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .control-group {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .control-btn {
+          padding: 12px 20px;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 14px;
+        }
+
+        .control-btn.primary {
+          background: linear-gradient(135deg, #5EE6A4, #7CE3F7);
+          color: #0b1220;
+        }
+
+        .control-btn.primary:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(94, 230, 164, 0.3);
+        }
+
+        .control-btn.secondary {
+          background: rgba(255,255,255,0.1);
+          color: white;
+          border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .control-btn.secondary:hover:not(:disabled) {
+          background: rgba(255,255,255,0.15);
+        }
+
+        .control-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #cbd5e1;
+          font-size: 14px;
+          cursor: pointer;
+        }
+
+        .toggle input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          accent-color: #5EE6A4;
+        }
+
+        .metrics-panel {
+          background: rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 12px;
+          padding: 20px;
+          height: fit-content;
+        }
+
+        .metrics-title {
+          font-size: 18px;
+          font-weight: 600;
+          margin: 0 0 16px;
+          color: #5EE6A4;
+        }
+
+        .metric-card {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 12px;
+        }
+
+        .metric-label {
+          font-size: 12px;
+          color: #cbd5e1;
+          margin-bottom: 4px;
+        }
+
+        .metric-value {
+          font-size: 24px;
+          font-weight: 700;
+          color: #5EE6A4;
+        }
+
+        .metric-info {
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid rgba(255,255,255,0.1);
+          font-size: 12px;
+          color: #cbd5e1;
+        }
+
+        .carechat-section {
+          margin-top: 32px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+          .demo-container {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+
+          .video-container {
+            max-width: 100%;
+          }
+
+          .control-group {
+            flex-direction: column;
+          }
+
+          .control-btn {
+            width: 100%;
+          }
+
+          .title {
+            font-size: 24px;
+          }
+
+          .container {
+            padding: 16px;
+          }
+        }
+      `}</style>
+    </>
   );
 }
-
-/* ---------- helpers ---------- */
-const isNum = (n:any)=> typeof n==="number" && isFinite(n);
-const avgOrUndef = (arr:any[]) => arr.length ? arr.reduce((a:number,b:number)=>a+b,0)/arr.length : undefined;
-
-/* ---------- styles ---------- */
-const S: Record<string, any> = {
-  page: {
-    minHeight: "100vh",
-    background:
-      "radial-gradient(1200px 700px at 20% 10%, rgba(94,230,164,0.18), transparent 60%)," +
-      "radial-gradient(900px 600px at 80% 20%, rgba(124,227,247,0.18), transparent 60%)," +
-      "radial-gradient(1200px 900px at 50% 120%, rgba(166,133,247,0.18), transparent 60%)," +
-      "#1E1F3B",
-    color: "#fff",
-    fontFamily:
-      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
-    display: "flex", flexDirection: "column", alignItems: "center", padding: 18,
-  },
-  h1: { fontSize: 26, margin: "8px 0 0" },
-  sub: { fontSize: 14, opacity: 0.9, margin: "6px 0 12px" },
-  btn: {
-    padding: 12, background: "linear-gradient(135deg,#5EE6A4,#7CE3F7)",
-    border: "none", borderRadius: 10, color: "#0b1220", fontWeight: 700, cursor: "pointer",
-  },
-  toggle: { fontSize: 13, opacity: 0.9, display: "flex", gap: 6, alignItems: "center" },
-  stage: {
-    width: "min(92vw, 960px)", aspectRatio: "16 / 9", borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.2)",
-    overflow: "hidden", position: "relative",
-  },
-  canvas: { width: "100%", height: "100%", display: "block" },
-};
