@@ -71,7 +71,7 @@ export default function About() {
 
             <nav className="nav" aria-label={isSV ? "Primär" : "Primary"}>
               <Link href="/labs/nl-vision">Demo</Link>
-              <Link href="/labs/nl-vision">Vision&nbsp;AI</Link>
+              <Link href="/nl-vision">Vision&nbsp;AI</Link>
               <Link href="/about">{isSV ? "Om" : "About"}</Link>
             </nav>
 
