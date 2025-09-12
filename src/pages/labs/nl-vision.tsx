@@ -7,14 +7,79 @@
  */
 
 /* ---------- DEMO: Holistic + live analytics ---------- */
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import LiveVitals from "../../components/LiveVitals";
 import CareChat   from "../../components/CareChat";
 import Script     from "next/script";
 
-
 /* ---------- PAGE (scripts loading + Holistic component) ---------- */
 export default function NLVisionHolisticPage() {
+
+  // === Context Layer integration (client-only) ===
+  useEffect(() => {
+    let mounted = true;
+    let iv: any;
+
+    (async () => {
+      try {
+        // Carga el módulo desde /public en el cliente
+        const { ContextLayer } = await import('../../public/nl-context-layer.js');
+
+        if (!mounted) return;
+
+        const ctx = new ContextLayer({
+          baselineHalfLifeMin: 15,
+          minSamplesForBaseline: 60,
+          zInfo: 0.5, zWarn: 1.5, zAlert: 2.5
+        });
+
+        // Recibe comprensión contextual y actualiza UI / chat
+        const onContext = (e: any) => {
+          const { state, recommendation } = e.detail;
+
+          // Texto empático bajo el dashboard
+          const el = document.getElementById('nl-blinks-context');
+          if (el) el.textContent = recommendation?.text ?? '';
+
+          // 🔎 DEBUG estado actual
+          const dbg = document.getElementById('nl-debug');
+          if (dbg) dbg.textContent = `state=${state}`;
+
+          // (Opcional) Empujar al Care Chat si existe API
+          // @ts-ignore
+          if (window.NL?.chat?.pushSystemMessage && state !== 'calm') {
+            // @ts-ignore
+            window.NL.chat.pushSystemMessage({
+              content: recommendation.text,
+              tags: ['context','blinks'],
+            });
+          }
+        };
+        window.addEventListener('nl:context', onContext);
+
+        // Alimenta con la señal publicada por NLVisionHolistic()
+        iv = setInterval(() => {
+          // @ts-ignore
+          const bpm = window.NL?.signals?.blinksPerMin ?? null;
+          if (bpm != null) ctx.update('blinks_per_min', bpm, performance.now());
+        }, 1000);
+
+        // Limpieza del listener dentro de la IIFE
+        return () => {
+          window.removeEventListener('nl:context', onContext);
+        };
+      } catch (err) {
+        console.warn('ContextLayer not loaded:', err);
+      }
+    })();
+
+    // Limpieza de efecto
+    return () => {
+      mounted = false;
+      clearInterval(iv);
+    };
+  }, []);
+
   return (
     <>
       {/* MediaPipe Holistic from CDN */}
@@ -49,6 +114,12 @@ export default function NLVisionHolisticPage() {
         <LiveVitals />
       </div>
 
+      {/* Feedback contextual (no diagnóstico) */}
+      <div id="nl-blinks-context" style={{ minHeight: '1.6rem' }} />
+
+      {/* 🔎 Debug en vivo de la Context Layer */}
+      <div id="nl-debug" style={{ fontSize: 12, opacity: 0.7 }} />
+
       {/* Caregiver Chat below dashboard */}
       <div style={{ marginTop: 24 }}>
         <CareChat />
@@ -56,6 +127,7 @@ export default function NLVisionHolisticPage() {
     </>
   );
 }
+
 type MetricSample = {
   t: number;
   hasFace: boolean;
@@ -84,9 +156,6 @@ function NLVisionHolistic() {
   const [mono, setMono] = useState(false);
   const [lowLight, setLowLight] = useState(false);
 
-  // Chat empathetic toggle
-  const [showChat, setShowChat] = useState(false);
-
   // small debug badge
   const [dbg, setDbg] = useState({ fps: 0, hands: 0, face: 0 });
 
@@ -96,6 +165,10 @@ function NLVisionHolistic() {
   const blinkTimesRef = useRef<number[]>([]);
   const lastBlinkTsRef = useRef<number>(0);
   const lastEarRef = useRef<number>(1);
+
+  // >>> B) Variables para umbral adaptativo de blink
+  const earEMA = useRef<number | null>(null); // baseline dinámico de EAR
+  const earVar = useRef<number>(0);           // varianza EMA para z local
 
   const fitCanvas = () => {
     const v = videoRef.current, c = canvasRef.current;
@@ -227,20 +300,34 @@ function NLVisionHolistic() {
 
         lastPtsRef.current = { face: fC, lh: lC, rh: rC };
 
-        const ear = computeEAR(faceLm) ?? undefined;             // closed eyes ~ < 0.24
+        const ear = computeEAR(faceLm) ?? undefined;             // closed eyes -> menor EAR
         const mouthOpen = computeMouthOpen(faceLm) ?? undefined; // speaking/stress ~ > 0.35
 
-        // blink detection (simple)
+        // >>> B) Blink detection ADAPTATIVA (sin umbral fijo)
         if (ear !== undefined) {
-          const th = 0.24;
           const now = t;
-          if (lastEarRef.current >= th && ear < th && now - lastBlinkTsRef.current > 250) {
+
+          // EMA baseline de EAR (half-life aprox: alpha=0.1)
+          const alpha = 0.1;
+          if (earEMA.current == null) earEMA.current = ear;
+          const prev = earEMA.current;
+          earEMA.current = (1 - alpha) * earEMA.current + alpha * ear;
+
+          // Varianza EMA para estimar desviación
+          const diff = ear - prev;
+          earVar.current = Math.max(0, (1 - alpha) * (earVar.current + alpha * diff * diff));
+          const std = Math.sqrt(earVar.current + 1e-6);
+
+          // Heurística: caída notable frente a baseline (2σ) o caída instantánea > 0.08
+          const drop = (prev - ear);
+          const isBlink = (ear < (earEMA.current - 2.0 * std)) || (drop > 0.08);
+
+          if (isBlink && now - lastBlinkTsRef.current > 200) {
             blinkTimesRef.current.push(now);
             lastBlinkTsRef.current = now;
             const cutoff = now - 60_000;
             blinkTimesRef.current = blinkTimesRef.current.filter(ts => ts >= cutoff);
           }
-          lastEarRef.current = ear;
         }
 
         metricsRef.current.push({
@@ -274,8 +361,9 @@ function NLVisionHolistic() {
         await holistic.send({ image: videoRef.current! });
         const now = performance.now();
         const fps = 1000 / (now - lastTs);
+        const fpsClamped = Math.max(1, Math.min(144, fps));
         lastTs = now;
-        setDbg((d) => ({ ...d, fps: Math.round(fps) }));
+        setDbg((d) => ({ ...d, fps: Math.round(fpsClamped) }));
         requestAnimationFrame(loop);
       };
       requestAnimationFrame(loop);
@@ -312,6 +400,14 @@ function NLVisionHolistic() {
           mouthOpenAvg: mouthAvg !== undefined ? +mouthAvg.toFixed(4) : null,
           blinksPerMin,
         };
+
+        // --- Exponer señal global para la Context Layer ---
+        try {
+          const w: any = window;
+          w.NL = w.NL || {};
+          w.NL.signals = w.NL.signals || {};
+          w.NL.signals.blinksPerMin = blinksPerMin;
+        } catch {}
 
         const key = "nlvision_holistic_v1";
         const prev = (typeof window !== "undefined" && window.localStorage.getItem(key)) || "[]";
