@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lab Dashboard</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 0.5em; }
+    th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Device Signal Stream</h1>
+  <table id="signals">
+    <thead>
+      <tr>
+        <th>Time</th><th>Device</th><th>Signals</th><th>Status</th><th>Confidence</th><th>Metadata</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    async function fetchSignals() {
+      const res = await fetch('/api/signals');
+      const data = await res.json();
+      const tbody = document.querySelector('#signals tbody');
+      tbody.innerHTML = '';
+      data.slice().reverse().forEach(ev => {
+        tbody.innerHTML += `<tr>
+          <td>${ev.timestamp}</td>
+          <td>${ev.device_id}</td>
+          <td><pre>${JSON.stringify(ev.signals, null, 2)}</pre></td>
+          <td>${ev.status_hint}</td>
+          <td>${ev.confidence}</td>
+          <td><pre>${JSON.stringify(ev.metadata, null, 2)}</pre></td>
+        </tr>`;
+      });
+    }
+    setInterval(fetchSignals, 2000);
+    fetchSignals();
+  </script>
+</body>
+</html>
